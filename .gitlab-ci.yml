@@ -144,7 +144,7 @@ test:
   before_script:
     - bundle exec rails db:prepare --trace
   script:
-    - bin/rails test:all
+    - bundle exec rspec
   artifacts:
     when: always
     paths:
