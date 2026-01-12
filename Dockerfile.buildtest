@@ -1,0 +1,44 @@
+ARG RUBY_VERSION=3.4.7
+ARG BASE_IMAGE=docker.io/library/ruby:$RUBY_VERSION-slim
+FROM ${BASE_IMAGE} AS base
+
+# Install dependencies & Node.js
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    chromium \
+    chromium-driver \
+    curl \
+    fonts-liberation \
+    git \
+    gnupg2 \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libdrm2 \
+    libgbm1 \
+    libnss3 \
+    libpq-dev \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxi6 \
+    libxtst6 \
+    libyaml-dev \
+    postgresql-client \
+    unzip \
+    wget \
+    xvfb && \
+    curl --proto "=https" -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install --no-install-recommends -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install application gems
+COPY Gemfile Gemfile.lock ./
+RUN gem install bundler && bundle
+
+# Set chrome into environment variable
+ENV CHROME_BIN=/usr/bin/chromium
+
+# Set up working directory
+WORKDIR /rails
