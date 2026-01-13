@@ -152,7 +152,7 @@ test:
   before_script:
     - bundle exec rails db:prepare --trace
   script:
-    - bundle exec rspec
+    - make test
   artifacts:
     when: always
     paths:
