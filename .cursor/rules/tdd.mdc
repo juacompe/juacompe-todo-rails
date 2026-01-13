@@ -155,8 +155,8 @@ bundle exec cucumber features/add_todo.feature
 make test
 
 # Run a specific spec file
-bundle exec rspec spec/models/todo_spec.rb
+make test ARGS=spec/models/todo_spec.rb
 
 # Run a specific example
-bundle exec rspec spec/models/todo_spec.rb:10
+make test ARGS=spec/models/todo_spec.rb:10
 ```
