@@ -1,0 +1,162 @@
+---
+alwaysApply: true
+---
+
+# Test-Driven Development Rules
+
+You are pair programming with a developer who practices strict TDD. Follow these rules at all times.
+
+## Core Principle: Test First
+
+**NEVER write production code without a failing test first.**
+
+When asked to implement a feature or fix a bug:
+1. First, write a test that fails
+2. Show the failing test to confirm it fails for the right reason
+3. Only then write the minimal code to make it pass
+4. Refactor while keeping tests green
+
+## Outside-In BDD with Cucumber
+
+For new features, start with Cucumber acceptance tests:
+
+### Workflow
+1. **Write the Gherkin scenario first** - describe the user behavior in `features/*.feature`
+2. **Run the feature** - it will fail with undefined steps
+3. **Write step definitions** - in `features/step_definitions/*_steps.rb`
+4. **Run again** - steps should fail (red)
+5. **Implement the code** - make steps pass one at a time
+6. **Refactor** - clean up while keeping the scenario green
+
+### Gherkin Best Practices
+- Write scenarios from the user's perspective
+- Use declarative, business-language steps
+- Avoid technical implementation details in feature files
+- One scenario should test one behavior
+
+Example structure:
+```gherkin
+Feature: [Feature name]
+  As a [role]
+  I want to [action]
+  So that [benefit]
+
+  Scenario: [Specific behavior]
+    Given [initial context]
+    When [action taken]
+    Then [expected outcome]
+```
+
+## Red-Green-Refactor Cycle
+
+For unit and integration tests with RSpec:
+
+### Red Phase
+- Write ONE failing test
+- Run it to confirm it fails
+- Ensure it fails for the expected reason (not syntax errors)
+
+### Green Phase
+- Write the MINIMAL code to make the test pass
+- Do not add extra functionality
+- Do not optimize prematurely
+- It's okay if the code is ugly
+
+### Refactor Phase
+- Clean up the code
+- Remove duplication
+- Improve naming
+- Run tests after each change to ensure they stay green
+
+## Small Increments
+
+- **One test at a time** - don't write multiple failing tests
+- **Baby steps** - make the smallest possible change
+- **Frequent commits** - commit after each green phase
+- **Simple first** - solve the simple case before edge cases
+
+## Test Structure
+
+### RSpec Tests
+```ruby
+RSpec.describe ClassName do
+  describe "#method_name" do
+    context "when condition" do
+      it "does expected behavior" do
+        # Arrange
+        # Act
+        # Assert
+      end
+    end
+  end
+end
+```
+
+### Cucumber Step Definitions
+```ruby
+Given("I am on the todo list page") do
+  visit todos_path
+end
+
+When("I add a todo item {string}") do |item_text|
+  fill_in "Todo", with: item_text
+  click_button "Add"
+end
+
+Then("I should see {string} in my todo list") do |item_text|
+  expect(page).to have_content(item_text)
+end
+```
+
+## What NOT To Do
+
+- Do NOT write implementation code first and tests after
+- Do NOT write multiple tests before making any pass
+- Do NOT skip the refactor phase
+- Do NOT add features not required by a failing test
+- Do NOT mock what you don't own without integration tests
+
+## When Responding to Requests
+
+1. If asked to "implement X" or "add feature Y":
+   - First propose a Cucumber scenario or RSpec test
+   - Wait for confirmation the test fails
+   - Then provide implementation
+
+2. If asked to "fix bug Z":
+   - First write a test that reproduces the bug
+   - Confirm the test fails
+   - Then provide the fix
+
+3. If asked to "refactor W":
+   - Ensure tests exist and are passing
+   - Make changes incrementally
+   - Run tests after each change
+
+## Rails Testing Conventions
+
+- **Feature/Acceptance tests**: `features/*.feature` (Cucumber)
+- **Request/Integration tests**: `spec/requests/*_spec.rb`
+- **Model tests**: `spec/models/*_spec.rb`
+- **Controller tests**: `spec/controllers/*_spec.rb` (if needed)
+- **Helper tests**: `spec/helpers/*_spec.rb`
+- **View tests**: `spec/views/*_spec.rb` (if needed)
+
+## Testing Commands
+
+```bash
+# Run all Cucumber features
+bundle exec cucumber
+
+# Run a specific feature
+bundle exec cucumber features/add_todo.feature
+
+# Run all RSpec tests
+make test
+
+# Run a specific spec file
+bundle exec rspec spec/models/todo_spec.rb
+
+# Run a specific example
+bundle exec rspec spec/models/todo_spec.rb:10
+```
