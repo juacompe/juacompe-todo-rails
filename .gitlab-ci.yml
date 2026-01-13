@@ -19,6 +19,8 @@ variables:
 
 base-image:
   stage: base
+  tags:
+    - ruufimon-1
   image: cacher.odds.team/docker/docker:27.2-cli
   services:
     - name: cacher.odds.team/docker/docker:27.2-dind
@@ -51,6 +53,8 @@ base-image:
 
 buildtool:
   stage: base-tool
+  tags:
+    - ruufimon-1
   image: cacher.odds.team/docker/docker:27.2-cli
   services:
     - name: cacher.odds.team/docker/docker:27.2-dind
@@ -83,6 +87,8 @@ buildtool:
 
 build-test-base:
   stage: base-tool
+  tags:
+    - ruufimon-1
   image: cacher.odds.team/docker/docker:27.2-cli
   services:
     - name: cacher.odds.team/docker/docker:27.2-dind
@@ -140,6 +146,8 @@ code_linter:
 
 test:
   stage: code-quality
+  tags:
+    - ruufimon-1
   image: $CI_REGISTRY_IMAGE/buildtest:latest
   before_script:
     - bundle exec rails db:prepare --trace
@@ -171,6 +179,8 @@ test:
 
 sonarqube:
   stage: code-quality
+  tags:
+    - ruufimon-1
   tags:
     - x86
   image:
@@ -213,6 +223,8 @@ sonarqube:
 
 build-image:
   stage: build
+  tags:
+    - ruufimon-1
   image: cacher.odds.team/docker/docker:27.2-cli
   services:
     - name: cacher.odds.team/docker/docker:27.2-dind
@@ -270,6 +282,8 @@ build-image:
 
 scan_image:
   stage: image-scan
+  tags:
+    - ruufimon-1
   image: cacher.odds.team/image/trivy-dind:1.0.0
   variables:
     TRIVY_EXIT_CODE: "0" 
@@ -316,6 +330,8 @@ scan_image:
 
 tag-image:
   stage: image-tag
+  tags:
+    - ruufimon-1
   image: cacher.odds.team/docker/docker:27.2-cli
   services:
     - name: cacher.odds.team/docker/docker:27.2-dind
