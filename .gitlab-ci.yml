@@ -180,8 +180,6 @@ test:
 sonarqube:
   stage: code-quality
   tags:
-    - ruufimon-1
-  tags:
     - x86
   image:
     name: cacher.odds.team/docker-hub-cache/sonarsource/sonar-scanner-cli:11
