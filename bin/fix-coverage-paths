@@ -32,14 +32,18 @@ echo "Converting absolute paths to relative paths..."
 # Check if jq is available
 if command -v jq &> /dev/null; then
   echo "Using jq for conversion..."
+  # Use /tmp for temporary files to avoid permission issues
+  TMP_FILE=$(mktemp /tmp/coverage-fix-XXXXXX)
+  trap "rm -f '$TMP_FILE'" EXIT
+  
   # Convert paths using jq (preferred method)
   if ! jq ".files[] |= (.filename |= sub(\"^${PROJECT_BASE_DIR}/\"; \"\"))" \
-    "$COVERAGE_FILE" > "${COVERAGE_FILE}.tmp"; then
+    "$COVERAGE_FILE" > "$TMP_FILE"; then
     echo "Error: jq conversion failed"
     exit 1
   fi
   
-  mv "${COVERAGE_FILE}.tmp" "$COVERAGE_FILE"
+  mv "$TMP_FILE" "$COVERAGE_FILE"
   
   # Verify conversion
   FIRST_PATH=$(jq -r '.files[0].filename' "$COVERAGE_FILE" 2>/dev/null || echo "")
@@ -48,23 +52,21 @@ else
   # Fallback: use sed for path conversion (works without jq)
   echo "jq not available, using sed for path conversion..."
   
-  # Create backup first
-  cp "$COVERAGE_FILE" "${COVERAGE_FILE}.bak"
+  # Use /tmp for temporary files to avoid permission issues
+  TMP_FILE=$(mktemp /tmp/coverage-fix-XXXXXX)
+  trap "rm -f '$TMP_FILE'" EXIT
   
   # Try with quotes first (JSON string format)
-  sed "s|\"${PROJECT_BASE_DIR}/|\"|g" "$COVERAGE_FILE" > "${COVERAGE_FILE}.tmp"
-  mv "${COVERAGE_FILE}.tmp" "$COVERAGE_FILE"
+  sed "s|\"${PROJECT_BASE_DIR}/|\"|g" "$COVERAGE_FILE" > "$TMP_FILE"
+  mv "$TMP_FILE" "$COVERAGE_FILE"
   
   # Also handle unquoted paths (just in case)
-  sed "s|${PROJECT_BASE_DIR}/||g" "$COVERAGE_FILE" > "${COVERAGE_FILE}.tmp"
-  mv "${COVERAGE_FILE}.tmp" "$COVERAGE_FILE"
+  sed "s|${PROJECT_BASE_DIR}/||g" "$COVERAGE_FILE" > "$TMP_FILE"
+  mv "$TMP_FILE" "$COVERAGE_FILE"
   
   # Extract first path for verification (basic check)
   FIRST_PATH=$(grep -o '"filename": "[^"]*"' "$COVERAGE_FILE" | head -1 | cut -d'"' -f4 || echo "")
   TOTAL_FILES=$(grep -c '"filename":' "$COVERAGE_FILE" || echo "0")
-  
-  # Clean up backup
-  rm -f "${COVERAGE_FILE}.bak"
 fi
 
 echo ""
