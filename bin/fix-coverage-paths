@@ -2,24 +2,44 @@
 # Fix coverage.json paths to match SonarQube expectations
 # Converts absolute paths to relative paths
 
-set -e
+set -euo pipefail
 
 COVERAGE_FILE="${1:-coverage/coverage.json}"
 PROJECT_BASE_DIR="${CI_PROJECT_DIR:-$(pwd)}"
 
+echo "=== Coverage Path Fixer ==="
+echo "Coverage file: $COVERAGE_FILE"
+echo "Project base dir: $PROJECT_BASE_DIR"
+echo "PWD: $(pwd)"
+
 if [ ! -f "$COVERAGE_FILE" ]; then
   echo "Error: Coverage file not found: $COVERAGE_FILE"
+  ls -la "$(dirname "$COVERAGE_FILE")" || true
   exit 1
 fi
 
-echo "Converting absolute paths to relative paths in $COVERAGE_FILE..."
+echo ""
+echo "Before conversion - first file path:"
+if command -v jq &> /dev/null; then
+  jq -r '.files[0].filename' "$COVERAGE_FILE" || echo "Could not read JSON"
+else
+  grep -o '"filename": "[^"]*"' "$COVERAGE_FILE" | head -1 || echo "Could not read file"
+fi
+
+echo ""
+echo "Converting absolute paths to relative paths..."
 
 # Check if jq is available
 if command -v jq &> /dev/null; then
+  echo "Using jq for conversion..."
   # Convert paths using jq (preferred method)
-  jq ".files[] |= (.filename |= sub(\"^${PROJECT_BASE_DIR}/\"; \"\"))" \
-    "$COVERAGE_FILE" > "${COVERAGE_FILE}.tmp" && \
-    mv "${COVERAGE_FILE}.tmp" "$COVERAGE_FILE"
+  if ! jq ".files[] |= (.filename |= sub(\"^${PROJECT_BASE_DIR}/\"; \"\"))" \
+    "$COVERAGE_FILE" > "${COVERAGE_FILE}.tmp"; then
+    echo "Error: jq conversion failed"
+    exit 1
+  fi
+  
+  mv "${COVERAGE_FILE}.tmp" "$COVERAGE_FILE"
   
   # Verify conversion
   FIRST_PATH=$(jq -r '.files[0].filename' "$COVERAGE_FILE" 2>/dev/null || echo "")
@@ -27,22 +47,46 @@ if command -v jq &> /dev/null; then
 else
   # Fallback: use sed for path conversion (works without jq)
   echo "jq not available, using sed for path conversion..."
-  sed -i.bak "s|\"${PROJECT_BASE_DIR}/|\"|g" "$COVERAGE_FILE"
-  sed -i.bak "s|${PROJECT_BASE_DIR}/||g" "$COVERAGE_FILE"
-  rm -f "${COVERAGE_FILE}.bak"
+  
+  # Create backup first
+  cp "$COVERAGE_FILE" "${COVERAGE_FILE}.bak"
+  
+  # Try with quotes first (JSON string format)
+  sed "s|\"${PROJECT_BASE_DIR}/|\"|g" "$COVERAGE_FILE" > "${COVERAGE_FILE}.tmp"
+  mv "${COVERAGE_FILE}.tmp" "$COVERAGE_FILE"
+  
+  # Also handle unquoted paths (just in case)
+  sed "s|${PROJECT_BASE_DIR}/||g" "$COVERAGE_FILE" > "${COVERAGE_FILE}.tmp"
+  mv "${COVERAGE_FILE}.tmp" "$COVERAGE_FILE"
   
   # Extract first path for verification (basic check)
-  FIRST_PATH=$(grep -o '"filename": "[^"]*"' "$COVERAGE_FILE" | head -1 | cut -d'"' -f4)
+  FIRST_PATH=$(grep -o '"filename": "[^"]*"' "$COVERAGE_FILE" | head -1 | cut -d'"' -f4 || echo "")
   TOTAL_FILES=$(grep -c '"filename":' "$COVERAGE_FILE" || echo "0")
+  
+  # Clean up backup
+  rm -f "${COVERAGE_FILE}.bak"
 fi
+
+echo ""
+echo "After conversion - first file path: $FIRST_PATH"
 
 # Verify the conversion worked
 if [[ "$FIRST_PATH" == /* ]]; then
-  echo "Warning: Paths still appear to be absolute: $FIRST_PATH"
+  echo ""
+  echo "ERROR: Paths still appear to be absolute: $FIRST_PATH"
   echo "Project base dir was: $PROJECT_BASE_DIR"
+  echo ""
+  echo "First few paths in file:"
+  if command -v jq &> /dev/null; then
+    jq -r '.files[0:3][].filename' "$COVERAGE_FILE" || true
+  else
+    grep -o '"filename": "[^"]*"' "$COVERAGE_FILE" | head -3 || true
+  fi
   exit 1
 fi
 
+echo ""
 echo "✓ Paths converted successfully"
 echo "  Sample path: $FIRST_PATH"
 echo "  Total files: $TOTAL_FILES"
+echo ""

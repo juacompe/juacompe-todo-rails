@@ -190,14 +190,62 @@ sonarqube:
     GIT_DEPTH: "0"
   script:
     - |
+      echo "=== Debugging Coverage Setup ==="
+      echo "Current directory: $(pwd)"
+      echo "CI_PROJECT_DIR: ${CI_PROJECT_DIR}"
+      echo ""
+      echo "Checking for coverage file..."
       if [ -f coverage/coverage.json ]; then
+        echo "✓ Coverage file found"
+        echo "File size: $(wc -c < coverage/coverage.json) bytes"
+        echo ""
+        echo "Before path conversion:"
+        head -5 coverage/coverage.json || true
+        echo ""
         echo "Fixing coverage paths for SonarQube..."
-        ./bin/fix-coverage-paths coverage/coverage.json
+        chmod +x bin/fix-coverage-paths || true
+        ./bin/fix-coverage-paths coverage/coverage.json || {
+          echo "ERROR: Path conversion failed!"
+          echo "Checking file contents:"
+          cat coverage/coverage.json | head -20 || true
+          exit 1
+        }
+        echo ""
+        echo "After path conversion - verifying:"
+        if command -v jq &> /dev/null; then
+          echo "First 3 file paths:"
+          jq -r '.files[0:3][].filename' coverage/coverage.json || true
+          echo "Coverage metrics:"
+          jq '.metrics' coverage/coverage.json || true
+        else
+          echo "jq not available, showing raw file:"
+          head -10 coverage/coverage.json || true
+        fi
       else
-        echo "Warning: Coverage file not found at coverage/coverage.json"
+        echo "✗ Coverage file NOT found at coverage/coverage.json"
+        echo "Listing coverage directory:"
         ls -la coverage/ || echo "Coverage directory does not exist"
+        echo ""
+        echo "Listing current directory:"
+        ls -la | head -20 || true
+        exit 1
       fi
-    - sonar-scanner -Dsonar.host.url="${SONAR_HOST_URL}" -Dsonar.token="${SONAR_TOKEN}"
+    - |
+      echo ""
+      echo "=== Running SonarQube Scanner ==="
+      echo "Final coverage.json check before SonarQube:"
+      if command -v jq &> /dev/null; then
+        echo "File paths (first 3):"
+        jq -r '.files[0:3][].filename' coverage/coverage.json || true
+        echo "Coverage percentage:"
+        jq -r '.metrics.covered_percent' coverage/coverage.json || true
+      fi
+      echo ""
+      echo "Running SonarQube scanner with debug output..."
+      sonar-scanner -Dsonar.host.url="${SONAR_HOST_URL}" -Dsonar.token="${SONAR_TOKEN}" -X 2>&1 | grep -i -E "(coverage|error|warn|reportPaths|ruby)" | head -50 || true
+      echo ""
+      echo "Running SonarQube scanner (full output)..."
+      sonar-scanner -Dsonar.host.url="${SONAR_HOST_URL}" -Dsonar.token="${SONAR_TOKEN}"
   allow_failure: true
   cache:
     policy: pull-push
