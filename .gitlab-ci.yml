@@ -181,7 +181,7 @@ test:
 sonarqube:
   stage: code-quality
   tags:
-    - x86
+    - ruufimon-1
   image:
     name: cacher.odds.team/docker-hub-cache/sonarsource/sonar-scanner-cli:11
     entrypoint: [""]
